@@ -108,7 +108,7 @@ class TaskDB {
   }
 
   async deleteTask(id: number): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const transaction = this.db?.transaction([this.STORE_NAME], 'readwrite');
       if (!transaction) {
         reject(new Error('Database not initialized'));
@@ -116,6 +116,16 @@ class TaskDB {
       }
 
       const store = transaction.objectStore(this.STORE_NAME);
+      
+      // First, get all subtasks
+      const subtasks = await this.getSubtasks(id);
+      
+      // Delete all subtasks
+      for (const subtask of subtasks) {
+        await store.delete(subtask.id);
+      }
+      
+      // Delete the main task
       const request = store.delete(id);
 
       request.onsuccess = () => {
@@ -208,3 +218,4 @@ class TaskDB {
 }
 
 export const taskDb = new TaskDB();
+
