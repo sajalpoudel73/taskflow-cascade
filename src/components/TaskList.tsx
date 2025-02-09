@@ -1,131 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, taskDb } from '@/lib/db';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import TaskFilters from './TaskFilters';
+import TaskActions from './TaskActions';
+import TaskRow from './TaskRow';
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from 'date-fns';
-import { Download, Search, Upload, Eye, Edit, Trash, ChevronDown, ChevronRight } from 'lucide-react';
-
-interface TaskItemProps {
-  task: Task;
-  onStatusChange: (taskId: number, newStatus: TaskStatus) => void;
-  onViewTask: (task: Task) => void;
-  onDeleteTask: (taskId: number) => void;
-  subtasks?: Task[];
-}
-
-const TaskItem: React.FC<TaskItemProps> = ({ task, onStatusChange, onViewTask, onDeleteTask, subtasks }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const hasSubtasks = subtasks && subtasks.length > 0;
-  const allSubtasksCompleted = subtasks?.every(st => st.status === 'Completed');
-  const canComplete = !hasSubtasks || allSubtasksCompleted;
-
-  return (
-    <>
-      <TableRow>
-        <TableCell>{task.id}</TableCell>
-        <TableCell>
-          <div className="flex items-center gap-2">
-            {hasSubtasks && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="h-6 w-6"
-              >
-                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </Button>
-            )}
-            {task.title}
-          </div>
-        </TableCell>
-        <TableCell className="max-w-[200px] truncate">{task.description}</TableCell>
-        <TableCell>{task.dueDate ? format(new Date(task.dueDate), 'PP') : '-'}</TableCell>
-        <TableCell>
-          <Select
-            value={task.status}
-            onValueChange={(value: TaskStatus) => {
-              if (value === 'Completed' && !canComplete) {
-                alert('Cannot complete task until all subtasks are completed');
-                return;
-              }
-              onStatusChange(task.id, value);
-            }}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue>{task.status}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Todo">Todo</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="Review">Review</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-        </TableCell>
-        <TableCell>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => onViewTask(task)}>
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => onDeleteTask(task.id)}>
-              <Trash className="h-4 w-4" />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-      {isExpanded && hasSubtasks && subtasks.map(subtask => (
-        <TableRow key={subtask.id} className="bg-muted/50">
-          <TableCell>{subtask.id}</TableCell>
-          <TableCell className="pl-10">{subtask.title}</TableCell>
-          <TableCell className="max-w-[200px] truncate">{subtask.description}</TableCell>
-          <TableCell>-</TableCell>
-          <TableCell>
-            <Select
-              value={subtask.status}
-              onValueChange={(value: TaskStatus) => onStatusChange(subtask.id, value)}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue>{subtask.status}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todo">Todo</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Review">Review</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-          </TableCell>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => onViewTask(subtask)}>
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => onDeleteTask(subtask.id)}>
-                <Trash className="h-4 w-4" />
-              </Button>
-            </div>
-          </TableCell>
-        </TableRow>
-      ))}
-    </>
-  );
-};
 
 interface TaskListProps {
   onViewTask: (task: Task) => void;
@@ -136,6 +22,8 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
   const [filter, setFilter] = useState<'active' | 'completed'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+  const [expandedTasks, setExpandedTasks] = useState<number[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     taskDb.init().then(() => {
@@ -144,6 +32,10 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
 
     const handleTaskCreated = () => {
       loadTasks();
+      toast({
+        title: "Success",
+        description: "Task created successfully",
+      });
     };
 
     window.addEventListener('taskCreated', handleTaskCreated);
@@ -168,6 +60,10 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       await taskDb.deleteTask(taskId);
       await loadTasks();
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
     }
   };
 
@@ -194,6 +90,14 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
       };
       reader.readAsText(file);
     }
+  };
+
+  const toggleTaskExpand = (taskId: number) => {
+    setExpandedTasks(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
   };
 
   const filteredTasks = tasks
@@ -236,61 +140,18 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant={filter === 'active' ? 'default' : 'outline'}
-            onClick={() => setFilter('active')}
-          >
-            Active
-          </Button>
-          <Button
-            variant={filter === 'completed' ? 'default' : 'outline'}
-            onClick={() => setFilter('completed')}
-          >
-            Completed
-          </Button>
-
-          {filter === 'active' && (
-            <Select value={statusFilter} onValueChange={(value: TaskStatus | 'all') => setStatusFilter(value)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Todo">Todo</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Review">Review</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-            <Input
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-[300px] pl-9"
-            />
-          </div>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" asChild>
-            <label>
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleImport}
-              />
-            </label>
-          </Button>
-        </div>
+        <TaskFilters
+          filter={filter}
+          setFilter={setFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+        />
+        <TaskActions
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onExport={handleExport}
+          onImport={handleImport}
+        />
       </div>
       
       <Table>
@@ -306,13 +167,15 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
         </TableHeader>
         <TableBody>
           {filteredTasks.map(task => (
-            <TaskItem
+            <TaskRow
               key={task.id}
               task={task}
               onStatusChange={handleStatusChange}
               onViewTask={onViewTask}
               onDeleteTask={handleDeleteTask}
               subtasks={tasks.filter(t => t.parentId === task.id)}
+              isExpanded={expandedTasks.includes(task.id)}
+              onToggleExpand={() => toggleTaskExpand(task.id)}
             />
           ))}
         </TableBody>
