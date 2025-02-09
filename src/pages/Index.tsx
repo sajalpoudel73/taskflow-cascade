@@ -47,7 +47,7 @@ const Index = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-6">Task Management</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8">
           <Input
             placeholder="Task title"
             value={newTask.title}
@@ -56,8 +56,17 @@ const Index = () => {
               title: e.target.value
             }))}
           />
+          <Textarea
+            placeholder="Task description"
+            className="mb-4"
+            value={newTask.description}
+            onChange={(e) => setNewTask(prev => ({
+              ...prev,
+              description: e.target.value
+            }))}
+          />
           <Input
-            type="datetime-local"
+            type="date"
             value={newTask.dueDate}
             onChange={(e) => setNewTask(prev => ({
               ...prev,
@@ -69,16 +78,6 @@ const Index = () => {
             Create Task
           </Button>
         </div>
-        
-        <Textarea
-          placeholder="Task description"
-          className="mb-4"
-          value={newTask.description}
-          onChange={(e) => setNewTask(prev => ({
-            ...prev,
-            description: e.target.value
-          }))}
-        />
       </div>
 
       <TaskList onViewTask={handleViewTask} />
