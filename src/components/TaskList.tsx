@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, taskDb } from '@/lib/db';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,45 +11,97 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Card } from "@/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { format } from 'date-fns';
-import { Download, Search, Upload } from 'lucide-react';
+import { Download, Search, Upload, Eye, Edit, Trash, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
   onStatusChange: (taskId: number, newStatus: TaskStatus) => void;
   onViewTask: (task: Task) => void;
+  onDeleteTask: (taskId: number) => void;
   subtasks?: Task[];
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onStatusChange, onViewTask, subtasks }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, onStatusChange, onViewTask, onDeleteTask, subtasks }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const hasSubtasks = subtasks && subtasks.length > 0;
   const allSubtasksCompleted = subtasks?.every(st => st.status === 'Completed');
   const canComplete = !hasSubtasks || allSubtasksCompleted;
 
   return (
-    <Card className="mb-4 overflow-hidden">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold">{task.title}</h3>
-          <div className="flex items-center gap-4">
+    <>
+      <TableRow>
+        <TableCell>{task.id}</TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            {hasSubtasks && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="h-6 w-6"
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </Button>
+            )}
+            {task.title}
+          </div>
+        </TableCell>
+        <TableCell className="max-w-[200px] truncate">{task.description}</TableCell>
+        <TableCell>{task.dueDate ? format(new Date(task.dueDate), 'PP') : '-'}</TableCell>
+        <TableCell>
+          <Select
+            value={task.status}
+            onValueChange={(value: TaskStatus) => {
+              if (value === 'Completed' && !canComplete) {
+                alert('Cannot complete task until all subtasks are completed');
+                return;
+              }
+              onStatusChange(task.id, value);
+            }}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue>{task.status}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todo">Todo</SelectItem>
+              <SelectItem value="In Progress">In Progress</SelectItem>
+              <SelectItem value="Review">Review</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => onViewTask(task)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => onDeleteTask(task.id)}>
+              <Trash className="h-4 w-4" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      {isExpanded && hasSubtasks && subtasks.map(subtask => (
+        <TableRow key={subtask.id} className="bg-muted/50">
+          <TableCell>{subtask.id}</TableCell>
+          <TableCell className="pl-10">{subtask.title}</TableCell>
+          <TableCell className="max-w-[200px] truncate">{subtask.description}</TableCell>
+          <TableCell>-</TableCell>
+          <TableCell>
             <Select
-              value={task.status}
-              onValueChange={(value: TaskStatus) => {
-                if (value === 'Completed' && !canComplete) {
-                  alert('Cannot complete task until all subtasks are completed');
-                  return;
-                }
-                onStatusChange(task.id, value);
-              }}
+              value={subtask.status}
+              onValueChange={(value: TaskStatus) => onStatusChange(subtask.id, value)}
             >
               <SelectTrigger className="w-[140px]">
-                <SelectValue>{task.status}</SelectValue>
+                <SelectValue>{subtask.status}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Todo">Todo</SelectItem>
@@ -58,56 +110,20 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onStatusChange, onViewTask, s
                 <SelectItem value="Completed">Completed</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => onViewTask(task)}>
-              View
-            </Button>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-        {task.dueDate && (
-          <p className="text-sm text-gray-500">
-            Due: {format(new Date(task.dueDate), 'PPP')}
-          </p>
-        )}
-      </div>
-      {hasSubtasks && (
-        <Accordion type="single" collapsible>
-          <AccordionItem value="subtasks">
-            <AccordionTrigger className="px-4">
-              Subtasks ({subtasks.length})
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-2">
-                {subtasks.map(subtask => (
-                  <Card key={subtask.id} className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{subtask.title}</h4>
-                        <p className="text-sm text-gray-600">{subtask.description}</p>
-                      </div>
-                      <Select
-                        value={subtask.status}
-                        onValueChange={(value: TaskStatus) => onStatusChange(subtask.id, value)}
-                      >
-                        <SelectTrigger className="w-[140px]">
-                          <SelectValue>{subtask.status}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Todo">Todo</SelectItem>
-                          <SelectItem value="In Progress">In Progress</SelectItem>
-                          <SelectItem value="Review">Review</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
-    </Card>
+          </TableCell>
+          <TableCell>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => onViewTask(subtask)}>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => onDeleteTask(subtask.id)}>
+                <Trash className="h-4 w-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
   );
 };
 
@@ -119,11 +135,19 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'active' | 'completed'>('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
 
-  React.useEffect(() => {
+  useEffect(() => {
     taskDb.init().then(() => {
       loadTasks();
     });
+
+    const handleTaskCreated = () => {
+      loadTasks();
+    };
+
+    window.addEventListener('taskCreated', handleTaskCreated);
+    return () => window.removeEventListener('taskCreated', handleTaskCreated);
   }, []);
 
   const loadTasks = async () => {
@@ -136,6 +160,13 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
     if (task) {
       const updatedTask = { ...task, status: newStatus };
       await taskDb.updateTask(updatedTask);
+      await loadTasks();
+    }
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      await taskDb.deleteTask(taskId);
       await loadTasks();
     }
   };
@@ -172,17 +203,18 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
         ? task.status === 'Completed'
         : task.status !== 'Completed';
       
+      const matchesStatusFilter = statusFilter === 'all' || task.status === statusFilter;
+      
       if (searchQuery) {
-        return matchesFilter && (
+        return matchesFilter && matchesStatusFilter && (
           task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           task.description.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
       
-      return matchesFilter;
+      return matchesFilter && matchesStatusFilter;
     })
     .sort((a, b) => {
-      // Sort by status priority
       const statusPriority = {
         'In Progress': 0,
         'Review': 1,
@@ -195,7 +227,6 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
       
       if (statusDiff !== 0) return statusDiff;
       
-      // Then sort by due date
       if (a.dueDate && b.dueDate) {
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       }
@@ -218,6 +249,20 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
           >
             Completed
           </Button>
+
+          {filter === 'active' && (
+            <Select value={statusFilter} onValueChange={(value: TaskStatus | 'all') => setStatusFilter(value)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Todo">Todo</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Review">Review</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -248,17 +293,30 @@ const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
         </div>
       </div>
       
-      <div className="space-y-4">
-        {filteredTasks.map(task => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            onStatusChange={handleStatusChange}
-            onViewTask={onViewTask}
-            subtasks={tasks.filter(t => t.parentId === task.id)}
-          />
-        ))}
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredTasks.map(task => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              onStatusChange={handleStatusChange}
+              onViewTask={onViewTask}
+              onDeleteTask={handleDeleteTask}
+              subtasks={tasks.filter(t => t.parentId === task.id)}
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

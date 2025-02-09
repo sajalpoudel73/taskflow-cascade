@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Task, taskDb } from '@/lib/db';
 import { format } from 'date-fns';
+import { Plus } from 'lucide-react';
 
 interface TaskDialogProps {
   task: Task | null;
@@ -26,13 +27,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   onOpenChange,
   onTaskUpdated,
 }) => {
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
   const [newSubtask, setNewSubtask] = React.useState({
     title: '',
     description: '',
   });
 
   const handleAddSubtask = async () => {
-    if (!task) return;
+    if (!task || !newSubtask.title) return;
 
     await taskDb.addTask({
       title: newSubtask.title,
@@ -44,6 +46,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     });
 
     setNewSubtask({ title: '', description: '' });
+    setShowSubtaskForm(false);
     onTaskUpdated();
   };
 
@@ -74,26 +77,49 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             </div>
           )}
           
-          <div className="space-y-4">
-            <h3 className="font-medium">Add Subtask</h3>
-            <Input
-              placeholder="Subtask title"
-              value={newSubtask.title}
-              onChange={(e) => setNewSubtask(prev => ({
-                ...prev,
-                title: e.target.value
-              }))}
-            />
-            <Textarea
-              placeholder="Subtask description"
-              value={newSubtask.description}
-              onChange={(e) => setNewSubtask(prev => ({
-                ...prev,
-                description: e.target.value
-              }))}
-            />
-            <Button onClick={handleAddSubtask}>Add Subtask</Button>
+          <div className="pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSubtaskForm(true)}
+              className="w-full"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Subtask
+            </Button>
           </div>
+
+          {showSubtaskForm && (
+            <div className="space-y-4 pt-4">
+              <Input
+                placeholder="Subtask title"
+                value={newSubtask.title}
+                onChange={(e) => setNewSubtask(prev => ({
+                  ...prev,
+                  title: e.target.value
+                }))}
+              />
+              <Textarea
+                placeholder="Subtask description"
+                value={newSubtask.description}
+                onChange={(e) => setNewSubtask(prev => ({
+                  ...prev,
+                  description: e.target.value
+                }))}
+              />
+              <div className="flex gap-2">
+                <Button onClick={handleAddSubtask}>Save Subtask</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowSubtaskForm(false);
+                    setNewSubtask({ title: '', description: '' });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

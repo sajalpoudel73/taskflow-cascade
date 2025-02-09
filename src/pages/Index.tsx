@@ -31,10 +31,8 @@ const Index = () => {
 
     setNewTask({ title: '', description: '', dueDate: '' });
     // Force TaskList to reload
-    const taskList = document.querySelector('TaskList');
-    if (taskList) {
-      taskList.dispatchEvent(new Event('taskCreated'));
-    }
+    const event = new CustomEvent('taskCreated');
+    window.dispatchEvent(event);
   };
 
   const handleViewTask = (task: Task) => {
@@ -44,54 +42,56 @@ const Index = () => {
 
   return (
     <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-6">Task Management</h1>
-        
-        <div className="grid grid-cols-1 gap-4 mb-8">
-          <Input
-            placeholder="Task title"
-            value={newTask.title}
-            onChange={(e) => setNewTask(prev => ({
-              ...prev,
-              title: e.target.value
-            }))}
-          />
-          <Textarea
-            placeholder="Task description"
-            className="mb-4"
-            value={newTask.description}
-            onChange={(e) => setNewTask(prev => ({
-              ...prev,
-              description: e.target.value
-            }))}
-          />
-          <Input
-            type="date"
-            value={newTask.dueDate}
-            onChange={(e) => setNewTask(prev => ({
-              ...prev,
-              dueDate: e.target.value
-            }))}
-          />
-          <Button onClick={handleCreateTask}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Task
-          </Button>
+      <h1 className="text-3xl font-bold mb-6">Task Management</h1>
+      <div className="grid grid-cols-[300px,1fr] gap-8">
+        <div className="space-y-4">
+          <div className="p-4 border rounded-lg bg-white shadow-sm">
+            <h2 className="text-lg font-semibold mb-4">Create New Task</h2>
+            <div className="space-y-4">
+              <Input
+                placeholder="Task title"
+                value={newTask.title}
+                onChange={(e) => setNewTask(prev => ({
+                  ...prev,
+                  title: e.target.value
+                }))}
+              />
+              <Textarea
+                placeholder="Task description"
+                value={newTask.description}
+                onChange={(e) => setNewTask(prev => ({
+                  ...prev,
+                  description: e.target.value
+                }))}
+              />
+              <Input
+                type="date"
+                value={newTask.dueDate}
+                onChange={(e) => setNewTask(prev => ({
+                  ...prev,
+                  dueDate: e.target.value
+                }))}
+              />
+              <Button onClick={handleCreateTask} className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Task
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border rounded-lg bg-white shadow-sm p-4">
+          <TaskList onViewTask={handleViewTask} />
         </div>
       </div>
-
-      <TaskList onViewTask={handleViewTask} />
       
       <TaskDialog
         task={selectedTask}
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}
         onTaskUpdated={() => {
-          // Force TaskList to reload
-          const taskList = document.querySelector('TaskList');
-          if (taskList) {
-            taskList.dispatchEvent(new Event('taskCreated'));
-          }
+          const event = new CustomEvent('taskCreated');
+          window.dispatchEvent(event);
         }}
       />
     </div>
