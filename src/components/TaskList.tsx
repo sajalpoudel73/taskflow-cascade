@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task, TaskStatus, taskDb } from '@/lib/db';
 import { Button } from "@/components/ui/button";
@@ -111,7 +110,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onStatusChange, onViewTask, s
   );
 };
 
-const TaskList: React.FC = () => {
+interface TaskListProps {
+  onViewTask: (task: Task) => void;
+}
+
+const TaskList: React.FC<TaskListProps> = ({ onViewTask }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'active' | 'completed'>('active');
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,13 +219,15 @@ const TaskList: React.FC = () => {
           </Button>
         </div>
         <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-[300px]"
-            icon={<Search className="w-4 h-4" />}
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-[300px] pl-9"
+            />
+          </div>
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
@@ -248,7 +253,7 @@ const TaskList: React.FC = () => {
             key={task.id}
             task={task}
             onStatusChange={handleStatusChange}
-            onViewTask={(task) => {/* Handle view task */}}
+            onViewTask={onViewTask}
             subtasks={tasks.filter(t => t.parentId === task.id)}
           />
         ))}
