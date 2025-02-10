@@ -1,4 +1,3 @@
-
 export type TaskStatus = 'Todo' | 'In Progress' | 'Review' | 'Completed';
 export type TaskType = 'task' | 'sub-task';
 
@@ -108,7 +107,7 @@ class TaskDB {
   }
 
   async deleteTask(id: number): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const transaction = this.db?.transaction([this.STORE_NAME], 'readwrite');
       if (!transaction) {
         reject(new Error('Database not initialized'));
@@ -116,24 +115,38 @@ class TaskDB {
       }
 
       const store = transaction.objectStore(this.STORE_NAME);
+      const parentIndex = store.index('parentId');
       
-      // First, get all subtasks
-      const subtasks = await this.getSubtasks(id);
+      // Get all subtasks in a single request
+      const subtasksRequest = parentIndex.getAll(id);
       
-      // Delete all subtasks
-      for (const subtask of subtasks) {
-        await store.delete(subtask.id);
-      }
-      
-      // Delete the main task
-      const request = store.delete(id);
-
-      request.onsuccess = () => {
-        resolve();
+      subtasksRequest.onsuccess = () => {
+        const subtasks = subtasksRequest.result;
+        
+        // Delete all subtasks
+        subtasks.forEach(subtask => {
+          store.delete(subtask.id);
+        });
+        
+        // Delete the main task
+        const deleteRequest = store.delete(id);
+        
+        deleteRequest.onsuccess = () => {
+          resolve();
+        };
+        
+        deleteRequest.onerror = () => {
+          reject(deleteRequest.error);
+        };
       };
-
-      request.onerror = () => {
-        reject(request.error);
+      
+      subtasksRequest.onerror = () => {
+        reject(subtasksRequest.error);
+      };
+      
+      // Handle transaction errors
+      transaction.onerror = () => {
+        reject(transaction.error);
       };
     });
   }
@@ -218,4 +231,3 @@ class TaskDB {
 }
 
 export const taskDb = new TaskDB();
-
