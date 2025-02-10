@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Task, taskDb } from '@/lib/db';
 import { format } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, Eye, Trash } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
 
 interface TaskDialogProps {
   task: Task | null;
@@ -33,6 +35,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     title: '',
     description: '',
   });
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (task) {
@@ -62,6 +66,29 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setShowSubtaskForm(false);
     loadSubtasks();
     onTaskUpdated();
+  };
+
+  const handleDeleteSubtask = async (subtaskId: number) => {
+    try {
+      await taskDb.deleteTask(subtaskId);
+      toast({
+        title: "Subtask deleted",
+        description: "The subtask has been successfully deleted.",
+      });
+      loadSubtasks();
+      onTaskUpdated();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete subtask",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewTask = (taskId: number) => {
+    navigate(`/task/${taskId}`);
+    onOpenChange(false);
   };
 
   if (!task) return null;
@@ -96,9 +123,27 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {subtasks.length > 0 ? (
               <div className="space-y-2">
                 {subtasks.map((subtask) => (
-                  <div key={subtask.id} className="p-3 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium">{subtask.title}</h4>
-                    <p className="text-sm text-gray-600">{subtask.description}</p>
+                  <div key={subtask.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">{subtask.title}</h4>
+                      <p className="text-sm text-gray-600">{subtask.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewTask(subtask.id)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

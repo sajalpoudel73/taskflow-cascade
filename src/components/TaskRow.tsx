@@ -14,7 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from 'date-fns';
-import { Eye, Trash, ChevronDown, ChevronRight } from 'lucide-react';
+import { Eye, Trash, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface TaskRowProps {
   task: Task;
@@ -38,6 +39,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   const hasSubtasks = subtasks && subtasks.length > 0;
   const allSubtasksCompleted = subtasks?.every(st => st.status === 'Completed');
   const canComplete = !hasSubtasks || allSubtasksCompleted;
+  const navigate = useNavigate();
 
   return (
     <>
@@ -87,6 +89,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
             <Button variant="ghost" size="icon" onClick={() => onViewTask(task)}>
               <Eye className="h-4 w-4" />
             </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/task/${task.id}`)}>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => onDeleteTask(task.id)}>
               <Trash className="h-4 w-4" />
             </Button>
@@ -119,6 +124,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => onViewTask(subtask)}>
                 <Eye className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate(`/task/${subtask.id}`)}>
+                <ExternalLink className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" onClick={() => onDeleteTask(subtask.id)}>
                 <Trash className="h-4 w-4" />
