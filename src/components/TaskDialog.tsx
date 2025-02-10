@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -28,10 +28,23 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   onTaskUpdated,
 }) => {
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [newSubtask, setNewSubtask] = React.useState({
     title: '',
     description: '',
   });
+
+  useEffect(() => {
+    if (task) {
+      loadSubtasks();
+    }
+  }, [task]);
+
+  const loadSubtasks = async () => {
+    if (!task) return;
+    const loadedSubtasks = await taskDb.getSubtasks(task.id);
+    setSubtasks(loadedSubtasks);
+  };
 
   const handleAddSubtask = async () => {
     if (!task || !newSubtask.title) return;
@@ -47,6 +60,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
     setNewSubtask({ title: '', description: '' });
     setShowSubtaskForm(false);
+    loadSubtasks();
     onTaskUpdated();
   };
 
@@ -76,6 +90,22 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               </p>
             </div>
           )}
+
+          <div className="space-y-2">
+            <h3 className="font-medium">Subtasks</h3>
+            {subtasks.length > 0 ? (
+              <div className="space-y-2">
+                {subtasks.map((subtask) => (
+                  <div key={subtask.id} className="p-3 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium">{subtask.title}</h4>
+                    <p className="text-sm text-gray-600">{subtask.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No subtasks yet</p>
+            )}
+          </div>
           
           <div className="pt-4 border-t">
             <Button 
